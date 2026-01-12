@@ -30,22 +30,38 @@ async def proxy_request(request: Request, path: str):
 
     # тело запроса
     body = await request.body()
-
+    
+    headers = {key: value for key, value in request.headers.items()
+               if key.lower() not in ['host', 'content-length']}
+    
+    
     # Формируем запрос к целевому сервису
     proxied_req = app.state.http_client.build_request(
         method=request.method,
         url=target_url,
-        headers=request.headers,
+        headers=headers,
         params=request.query_params,
         content=body
     )
-
-    # Отправляем запрос
-    response = await app.state.http_client.send(proxied_req)
-
-    # Возвращаем ответ клиенту
-    return Response(
-        content=response.content,
-        status_code=response.status_code,
-        headers=dict(response.headers)
-    )
+    
+    try:
+        # Отправляем запрос
+        response = await app.state.http_client.send(proxied_req)
+        # Возвращаем ответ клиенту
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=dict(response.headers)
+        )
+    except httpx.RequestError as e:
+        return Response(
+            content=f'{{"detail": "Service unavailable: {str(e)}"}}',
+            status_code=503,
+            media_type="application/json"
+        )
+    except Exception as e:
+        return Response(
+            content=f'{{"detail": "Internal gateway error"}}',
+            status_code=500,
+            media_type="application/json"
+            )

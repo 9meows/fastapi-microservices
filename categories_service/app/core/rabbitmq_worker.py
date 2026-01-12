@@ -73,33 +73,3 @@ async def run_consumer():
         if connection and not connection.is_closed:
             await connection.close()
             print("Соединение с RabbitMQ закрыто.")
-            
-
-
-
-
-async def run_consumer():
-    """Запускает consumer'а, который слушает очередь RPC-запросов."""
-    connection: Optional[AbstractRobustConnection] = None
-    try:
-        connection = await aio_pika.connect_robust(RABBITMQ_URL)
-        async with connection:
-            channel = await connection.channel()
-            await channel.set_qos(prefetch_count=1)
-
-            default_exchange = channel.default_exchange
-
-            queue = await channel.declare_queue("category_check_queue")
-            print(" [*] Ожидание RPC-запросов...")
-
-            await queue.consume(
-                lambda message: process_category_check(message, default_exchange)
-            )
-
-            await asyncio.Future()
-    except asyncio.CancelledError:
-        print("Получен сигнал отмены, consumer завершает работу.")
-    finally:
-        if connection and not connection.is_closed:
-            await connection.close()
-            print("Соединение с RabbitMQ закрыто.")
