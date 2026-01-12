@@ -11,11 +11,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+  api_gateway_service:
+    build: ./api_gateway_service 
+    ports:
+      - "127.0.0.1:8000:8000" # Клиент будет обращаться к шлюзу по этому порту
+    environment:
+      POSTS_SERVICE_URL: ${POSTS_SERVICE_URL} # Внутренний URL Posts Service
+      CATEGORIES_SERVICE_URL: ${CATEGORIES_SERVICE_URL} # Внутренний URL Categories Service
+    depends_on:
+      posts_service:
+        condition: service_started # Gateway зависит от Posts Service
+      categories_service:
+        condition: service_started # Gateway зависит от Categories Service
+    restart: on-failure 
   posts_service:
     build: ./posts_service
-    ports:
-      - "127.0.0.1:8001:8000" # Порт, по которому будет доступен Posts Service
     environment:
       DATABASE_URL: ${POSTS_DB_URL}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
@@ -29,8 +39,6 @@ services:
 
   categories_service:
     build: ./categories_service
-    ports:
-      - "127.0.0.1:8002:8000" # Порт, по которому будет доступен Categories Service
     environment:
       DATABASE_URL: ${CATEGORIES_DB_URL} # Отдельная БД для категорий
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/

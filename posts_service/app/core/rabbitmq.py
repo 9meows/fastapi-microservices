@@ -39,7 +39,6 @@ class RpcClient:
             future.set_result(message.body)
 
     async def call(self, category_id: int) -> Optional[bytes]:
-        # Проверяем, что connection доступен
         if not self.connection or self.connection.is_closed:
             raise ConnectionError("RPC Client is not connected.")
 
