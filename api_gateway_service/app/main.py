@@ -20,6 +20,8 @@ CATEGORIES_SERVICE_URL = os.getenv("CATEGORIES_SERVICE_URL")
 async def proxy_request(request: Request, path: str):
     """Функция определяет, какому сервису перенаправить запрос, основываясь на начальной части URL пути."""
     target_url = None
+    if not path.endswith("/"):
+        path += "/"
     if path.startswith("posts"):
         target_url = f"{POSTS_SERVICE_URL}/{path}"
     elif path.startswith("categories"):
@@ -48,10 +50,15 @@ async def proxy_request(request: Request, path: str):
         # Отправляем запрос
         response = await app.state.http_client.send(proxied_req)
         # Возвращаем ответ клиенту
+        
+        response_headers = {
+        k: v for k, v in response.headers.items()
+        if k.lower() not in ["location"]}
+        
         return Response(
             content=response.content,
             status_code=response.status_code,
-            headers=dict(response.headers)
+            headers=dict(response_headers)
         )
     except httpx.RequestError as e:
         return Response(
