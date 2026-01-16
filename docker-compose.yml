@@ -47,8 +47,24 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy # Categories Service зависит от проверки готовности RABBITMQ
+  # redis:
+  #   image: redis:7.4-alpine
+  #   container_name: redis-microservice
+  #   restart: always
+  #   volumes:
+  #     - redis-data:/data
+  #   command: ["redis-server", "--appendonly", "yes"]
+  #   # Закомментировано, чтобы подключаться без пароля
+  #   # environment:
+  #   #   - REDIS_PASSWORD=your_secure_password
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "PING"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
 
 
 volumes:
   posts_db_data:
   categories_db_data:
+  #redis-data:

@@ -3,6 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.dependencies import get_category_service
 from app.schemas.category import Category, CategoryBase
 from app.services.categories import CategoryService
+from app.core.logging import get_logger
+
+logger = get_logger("categories_service")
 
 router = APIRouter(
     prefix="/categories",
@@ -18,6 +21,9 @@ async def read_categories(
 ):
     """Получить список всех категорий."""
     categories = await category_service.get_all_categories(skip=skip, limit=limit)
+    
+    logger.info({"event": "categories_fetched", "count": len(categories), "skip": skip, "limit": limit})
+    
     return categories
 
 
@@ -28,8 +34,13 @@ async def create_category(
 ):
     """Создать новую категорию."""
     db_category = await category_service.create_category(category=category)
+    
     if db_category is None:
+        logger.warning({"event": "create_category_failed", "category_name": category.name, "reason": "already_exists"})
         raise HTTPException(status_code=400, detail="Category with this name already exists")
+    
+    logger.info({"event": "create_category_success", "category_id": db_category.id,"category_name": db_category.name})
+    
     return db_category
 
 
@@ -40,6 +51,9 @@ async def read_category(
 ):
     """Получить категорию по ID."""
     db_category = await category_service.get_category_by_id(category_id=category_id)
+    
     if db_category is None:
+        logger.warning({"event": "read_category_failed", "category_id": category_id, "reason": "not_found"})
         raise HTTPException(status_code=404, detail="Category not found")
+    
     return db_category
