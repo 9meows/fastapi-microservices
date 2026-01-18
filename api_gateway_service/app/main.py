@@ -1,21 +1,30 @@
 import os
 import httpx
 import time
-from fastapi import FastAPI, Request, Response
+import redis.asyncio as redis
+
+from fastapi import FastAPI, Request, Response, Depends
 from contextlib import asynccontextmanager
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+
 from app.core.logging import get_logger
+
 
 logger = get_logger("api_gateway")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info({"event": "gateway_startup"})
+    app.state.redis = redis.from_url("redis://redis:6379", encoding = "utf-8", decode_responses = True)
+    await FastAPILimiter.init(app.state.redis)
     app.state.http_client = httpx.AsyncClient()
     logger.info({"event": "gateway_ready"})
     try:
         yield
     finally:
         logger.info({"event": "gateway_shutdown"})
+        await app.state.redis.close()
         await app.state.http_client.aclose()
 
 app = FastAPI(title="API Gateway", lifespan=lifespan)
@@ -53,10 +62,13 @@ async def log_gateway_requests(request: Request, call_next):
     else:
         logger.info(log_data)
     
+    response.headers["X-RateLimit-Limit"] = "100"
+    
     return response
 
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+               dependencies=[Depends(RateLimiter(times=10, minutes=5))])
 async def proxy_request(request: Request, path: str):
     """Функция определяет, какому сервису перенаправить запрос, основываясь на начальной части URL пути."""
     target_url = None
@@ -148,3 +160,4 @@ async def proxy_request(request: Request, path: str):
             status_code=500,
             media_type="application/json"
             )
+        
