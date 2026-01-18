@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     logger.info({"event": "gateway_startup"})
     app.state.redis = redis.from_url("redis://redis:6379", encoding = "utf-8", decode_responses = True)
     await FastAPILimiter.init(app.state.redis)
-    app.state.http_client = httpx.AsyncClient()
+    app.state.http_client = httpx.AsyncClient(timeout=30.0)
     logger.info({"event": "gateway_ready"})
     try:
         yield
@@ -66,9 +66,13 @@ async def log_gateway_requests(request: Request, call_next):
     
     return response
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "api_gateway"}
+
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-               dependencies=[Depends(RateLimiter(times=10, minutes=5))])
+               dependencies=[Depends(RateLimiter(times=100, minutes=5))])
 async def proxy_request(request: Request, path: str):
     """Функция определяет, какому сервису перенаправить запрос, основываясь на начальной части URL пути."""
     target_url = None
@@ -160,4 +164,3 @@ async def proxy_request(request: Request, path: str):
             status_code=500,
             media_type="application/json"
             )
-        
