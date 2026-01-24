@@ -1,9 +1,8 @@
-from pydantic import BaseModel
-from pydantic import ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CategoryBase(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1)
 
 
 class Category(CategoryBase):
