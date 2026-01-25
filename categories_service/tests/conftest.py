@@ -13,6 +13,7 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
+    """Создаёт движок БД один раз на все тесты"""
     engine = create_async_engine(TEST_DATABASE_URL, echo = False, future = True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -23,10 +24,12 @@ async def test_engine():
         
 @pytest_asyncio.fixture(scope="session")
 async def async_session_maker(test_engine):
+    """Фабрика сессий для тестов"""
     return async_sessionmaker(bind=test_engine, class_=AsyncSession, expire_on_commit=False)
 
 @pytest_asyncio.fixture()
 async def app_test(async_session_maker):
+    """FastAPI приложение с подменённой БД"""
     async def _get_db():
         async with async_session_maker() as session:
             try:
@@ -44,12 +47,14 @@ async def app_test(async_session_maker):
     
 @pytest_asyncio.fixture()
 async def client(app_test):
+    """HTTP клиент для интеграционных тестов"""
     transport = ASGITransport(app=app_test)
     async with AsyncClient(transport=transport, base_url="http://testserver") as c:
         yield c
 
 @pytest_asyncio.fixture()
 async def db_session(async_session_maker):
+    """Сессия БД для unit-тестов"""
     async with async_session_maker() as session:
         await session.execute(delete(Category))
         await session.commit()

@@ -2,6 +2,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_create_category_success(client):
+    """Тест: создание категории через API"""
     response = await client.post("/categories/", json={"name":"Technology"})
     
     assert response.status_code == 201
@@ -12,6 +13,7 @@ async def test_create_category_success(client):
     
 @pytest.mark.asyncio
 async def test_create_category_duplicate(client):
+    """Тест: попытка создать дубликат через API"""
     await client.post("/categories/", json={"name":"Technology"})
     
     response = await client.post("/categories/", json={"name":"Technology"})
@@ -22,6 +24,7 @@ async def test_create_category_duplicate(client):
     
 @pytest.mark.asyncio
 async def test_get_category_by_id_success(client):
+    """Тест: получение категории по ID"""
     create_response = await client.post("/categories/", json={"name": "Sports"})
     category_id = create_response.json()["id"]
     
@@ -35,6 +38,7 @@ async def test_get_category_by_id_success(client):
 
 @pytest.mark.asyncio
 async def test_get_category_by_id_not_found(client):
+    """Тест: получение несуществующей категории"""
     response = await client.get("/categories/999")
     
     assert response.status_code == 404
@@ -43,6 +47,7 @@ async def test_get_category_by_id_not_found(client):
 
 @pytest.mark.asyncio
 async def test_get_all_categories_empty(client):
+    """Тест: получение пустого списка категорий"""
     response = await client.get("/categories/")
     
     assert response.status_code == 200
@@ -51,6 +56,7 @@ async def test_get_all_categories_empty(client):
 
 @pytest.mark.asyncio
 async def test_get_all_categories_with_data(client):
+    """Тест: получение списка категорий"""
     await client.post("/categories/", json={"name": "Tech"})
     await client.post("/categories/", json={"name": "Sports"})
     await client.post("/categories/", json={"name": "Music"})
@@ -67,6 +73,7 @@ async def test_get_all_categories_with_data(client):
 
 @pytest.mark.asyncio
 async def test_get_categories_with_pagination(client):
+    """Тест: пагинация категорий"""
     for i in range(5):
         await client.post("/categories/", json={"name": f"Category{i}"})
     
@@ -81,5 +88,6 @@ async def test_get_categories_with_pagination(client):
 
 @pytest.mark.asyncio
 async def test_create_category_invalid_data(client):
+    """Тест: создание категории с невалидными данными"""
     response = await client.post("/categories/", json={"name": ""})
     assert response.status_code == 422

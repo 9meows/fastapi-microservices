@@ -6,6 +6,7 @@ from app.schemas.category import CategoryBase
 
 @pytest.mark.asyncio
 async def test_create_category_success(db_session):
+    """Тест: успешное создание категории"""
     repository = CategoryRepository(db=db_session)
     service = CategoryService(category_repo=repository)
     category_data = CategoryBase(name="Technology")
@@ -18,6 +19,7 @@ async def test_create_category_success(db_session):
     
 @pytest.mark.asyncio
 async def test_create_category_duplicate(db_session):
+    """Тест: попытка создать дубликат категории"""
     repository = CategoryRepository(db=db_session)
     service = CategoryService(category_repo=repository)
     category_data = CategoryBase(name="Technology")
@@ -29,6 +31,7 @@ async def test_create_category_duplicate(db_session):
     
 @pytest.mark.asyncio
 async def test_get_category_by_id_success(db_session):
+    """Тест: получение категории по ID"""
     repository = CategoryRepository(db=db_session)
     service = CategoryService(category_repo=repository)
     category_data = CategoryBase(name="Technology")
@@ -42,6 +45,7 @@ async def test_get_category_by_id_success(db_session):
 
 @pytest.mark.asyncio
 async def test_get_category_by_id_not_found(db_session):
+    """Тест: получение несуществующей категории"""
     repository = CategoryRepository(db=db_session)
     service = CategoryService(category_repo=repository)
     
@@ -52,6 +56,7 @@ async def test_get_category_by_id_not_found(db_session):
 
 @pytest.mark.asyncio
 async def test_get_all_categories(db_session):
+    """Тест: получение всех категорий"""
     repository = CategoryRepository(db=db_session)
     service = CategoryService(category_repo=repository)
     
@@ -69,6 +74,7 @@ async def test_get_all_categories(db_session):
 
 @pytest.mark.asyncio
 async def test_get_all_categories_with_pagination(db_session):
+    """Тест: пагинация категорий"""
     repository = CategoryRepository(db=db_session)
     service = CategoryService(category_repo=repository)
     
