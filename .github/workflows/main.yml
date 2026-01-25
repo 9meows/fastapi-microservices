@@ -1,0 +1,30 @@
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-categories:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v3
+    
+    - name: python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: dependencies
+      working-directory: ./categories_service
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+    
+    - name: run tests
+      working-directory: ./categories_service
+      run: pytest -v --tb=short
