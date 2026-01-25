@@ -48,3 +48,9 @@ async def client(app_test):
     async with AsyncClient(transport=transport, base_url="http://testserver") as c:
         yield c
 
+@pytest_asyncio.fixture()
+async def db_session(async_session_maker):
+    async with async_session_maker() as session:
+        await session.execute(delete(Category))
+        await session.commit()
+        yield session
