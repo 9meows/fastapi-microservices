@@ -21,9 +21,10 @@ class RpcClient:
         self.channel: Optional[aio_pika.Channel] = None
         self.callback_queue: Optional[aio_pika.Queue] = None
         self.futures = {}
-        self.loop = asyncio.get_running_loop()
+        self.loop = None
 
     async def connect(self):
+        self.loop = asyncio.get_running_loop()
         self.connection = await aio_pika.connect_robust(self.amqp_url, loop=self.loop)
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)

@@ -1,11 +1,10 @@
-from pydantic import BaseModel
-from pydantic import ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
 
 class PostBase(BaseModel):
-    title: str
-    content: str
-    category_id: int
+    title: str = Field(..., min_length=1, max_length=50)
+    content: str = Field(..., min_length=1)
+    category_id: PositiveInt
 
 
 class Post(PostBase):
