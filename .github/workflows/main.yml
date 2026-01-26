@@ -54,3 +54,28 @@ jobs:
         env:
           PYTHONPATH: .
         run: pytest -v --tb=short
+
+  test-api-gateway:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v3
+
+      - name: python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: dependencies
+        working-directory: ./api_gateway_service
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: run tests
+        working-directory: ./api_gateway_service
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest -v --tb=short
