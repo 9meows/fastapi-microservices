@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+httpx
+loguru
+fastapi-limiter
+redis
+pytest
+pytest-asyncio
+pytest-mock
+httpx
+respx
