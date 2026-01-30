@@ -1,11 +1,12 @@
 # FastAPI Microservices Architecture
 
-Учебный проект демонстрирующий микросервисную архитектуру с использованием FastAPI, RabbitMQ и Docker.
+Проект демонстрирующий микросервисную архитектуру с использованием FastAPI, RabbitMQ и Docker.
 
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
 [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-4.1.1-orange.svg)](https://www.rabbitmq.com/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docs.docker.com/compose/)
+[![Tests](https://img.shields.io/badge/Tests-Passing-success.svg)](https://github.com/9meows/fastapi-microservices)
 
 ---
 
@@ -18,7 +19,11 @@
 - [Быстрый старт](#быстрый-старт)
 - [API документация](#api-документация)
 - [Особенности реализации](#особенности-реализации)
+- [Тестирование](#тестирование)
+- [Мониторинг и логирование](#мониторинг-и-логирование)
+- [Безопасность](#безопасность)
 - [Примеры использования](#примеры-использования)
+- [CI/CD](#cicd)
 
 ---
 
@@ -34,6 +39,10 @@
 - ✅ **Clean Architecture** с разделением на слои (routers → services → repositories)
 - ✅ **Dependency Injection** через FastAPI
 - ✅ **Docker Compose** для оркестрации сервисов
+- ✅ **Комплексное тестирование** (unit, integration тесты)
+- ✅ **Structured Logging** с JSON-форматом
+- ✅ **Rate Limiting** через Redis
+- ✅ **CI/CD Pipeline** через GitHub Actions
 
 ---
 
@@ -47,7 +56,9 @@
        ▼
 ┌─────────────────────────┐
 │    API Gateway          │
-│                         │
+│  • Rate Limiting        │
+│  • Request Logging      │
+│  • Proxy Routing        │
 └───────┬─────────────────┘
         │
         ├─────────────────┬─────────────────┐
@@ -60,14 +71,24 @@
        │                 │                 │
        └─────────────────┴─────────────────┘
            RPC через RabbitMQ для валидации
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │    Redis     │
+                  │ Rate Limiter │
+                  └──────────────┘
 ```
 
 ### Поток данных
 
 1. **Клиент** → отправляет запрос к API Gateway (`:8000`)
-2. **API Gateway** → маршрутизирует запрос к нужному сервису
+2. **API Gateway** → 
+   - Проверяет rate limit в Redis (100 req/5min)
+   - Логирует запрос с correlation ID
+   - Маршрутизирует запрос к нужному сервису
 3. **Posts Service** → при создании поста проверяет существование категории через RabbitMQ RPC
 4. **Categories Service** → обрабатывает RPC-запрос и возвращает результат валидации
+5. **Response** → логируется и возвращается клиенту
 
 ---
 
@@ -89,10 +110,27 @@
 - **aio-pika** - асинхронный клиент для RabbitMQ
 - **httpx** - HTTP клиент для API Gateway
 
+### Кэширование и Rate Limiting
+
+- **Redis** - хранилище для rate limiting
+- **fastapi-limiter** - middleware для ограничения запросов
+
+### Логирование
+
+- **Loguru** - structured logging с JSON форматом
+
 ### Инфраструктура
 
 - **Docker** + **Docker Compose** - контейнеризация
 - **Pydantic** - валидация данных
+
+### Тестирование
+
+- **pytest** - фреймворк для тестирования
+- **pytest-asyncio** - поддержка async тестов
+- **pytest-mock** - создание моков
+- **httpx** - HTTP клиент для тестов
+- **respx** - мокирование HTTP запросов
 
 ---
 
@@ -103,9 +141,16 @@ fastapi-microservices/
 │
 ├── api_gateway_service/          # API Gateway
 │   ├── app/
+│   │   ├── core/
+│   │   │   └── logging.py 
 │   │   └── main.py              # Прокси-логика маршрутизации
+│   ├── tests/                   # Тесты Gateway
+│   │   ├── conftest.py
+│   │   └── test_gateway.py
 │   ├── Dockerfile
-│   └── requirements.txt
+│   ├── pytest.ini
+│   ├── requirements.txt
+│   └── requirements-dev.txt
 │
 ├── posts_service/                # Сервис постов
 │   ├── app/
@@ -113,13 +158,21 @@ fastapi-microservices/
 │   │   ├── core/                # Конфигурация, зависимости
 │   │   │   ├── database.py      # Подключение к БД
 │   │   │   ├── dependencies.py  # DI контейнеры
+│   │   │   ├── logging.py       # Structured logging
 │   │   │   └── rabbitmq.py      # RPC клиент
 │   │   ├── models/              # SQLAlchemy модели
 │   │   ├── repositories/        # Слой работы с БД
 │   │   ├── schemas/             # Pydantic схемы
 │   │   ├── services/            # Бизнес-логика
 │   │   └── main.py
+│   ├── tests/                   # Тесты Posts Service
+│   │   ├── integration/
+│   │   │   └── test_posts_api.py
+│   │   ├── unit/
+│   │   │   └── test_post_service.py
+│   │   └── conftest.py
 │   ├── Dockerfile
+│   ├── pytest.ini
 │   └── requirements.txt
 │
 ├── categories_service/           # Сервис категорий
@@ -128,14 +181,26 @@ fastapi-microservices/
 │   │   ├── core/
 │   │   │   ├── database.py
 │   │   │   ├── dependencies.py
+│   │   │   ├── logging.py
 │   │   │   └── rabbitmq_worker.py  # RPC server
 │   │   ├── models/
 │   │   ├── repositories/
 │   │   ├── schemas/
 │   │   ├── services/
 │   │   └── main.py
+│   ├── tests/                   #  Тесты Categories Service
+│   │   ├── integration/
+│   │   │   └── test_categories_api.py
+│   │   ├── unit/
+│   │   │   └── test_category_service.py
+│   │   └── conftest.py
 │   ├── Dockerfile
+│   ├── pytest.ini
 │   └── requirements.txt
+│
+├── .github/
+│   └── workflows/
+│       └── main.yml              # CI/CD pipeline
 │
 ├── docker-compose.yml            # Оркестрация сервисов
 ├── .env.example                  # Пример переменных окружения
@@ -412,6 +477,280 @@ async def lifespan(app: FastAPI):
 
 ---
 
+## 🧪 Тестирование
+
+### Стратегия тестирования
+
+Проект покрыт **комплексными тестами** на нескольких уровнях:
+
+```
+📦 Тестовое покрытие
+├── Unit Tests          # Тестирование бизнес-логики
+│   ├── Service layer
+│   ├── Repository
+│   └── Validation logic
+│
+├── Integration Tests   # Тестирование API
+│   ├── API endpoints
+│   ├── Database interactions
+│   └── Pydantic validation
+│
+└── Gateway Tests        # Тестирование маршрутизации
+    ├── Proxy routing
+    └── Request forwarding
+```
+
+### Запуск тестов
+
+**Все тесты всех сервисов:**
+
+```bash
+# Через docker-compose
+docker-compose run posts_service pytest -v
+docker-compose run categories_service pytest -v
+docker-compose run api_gateway_service pytest -v
+```
+
+**Тесты конкретного сервиса:**
+
+```bash
+# Posts Service
+cd posts_service
+pytest -v
+
+# С покрытием кода
+pytest --cov=app --cov-report=html
+
+# Конкретный тест-файл
+pytest tests/unit/test_post_service.py -v
+
+# С детальным выводом
+pytest -v --tb=short
+```
+
+**CI/CD автоматически запускает тесты:**
+
+```bash
+# Через GitHub Actions при каждом push/PR
+# См. .github/workflows/main.yml
+```
+
+
+### Что покрыто тестами
+
+#### ✅ Posts Service
+
+**Unit Tests:**
+- Создание поста с валидной категорией
+- Создание поста с невалидной категорией
+- Получение поста по ID
+- Получение всех постов
+- Получение постов по категории
+
+**Integration Tests:**
+- POST /posts/ - успешное создание
+- POST /posts/ - невалидная категория
+- GET /posts/{id} - существующий пост
+- GET /posts/{id} - несуществующий пост (404)
+- GET /posts/ - пустой список
+- GET /posts/ - список с данными
+- GET /posts/?category_id=X - фильтрация
+- GET /posts/?skip=N&limit=M - пагинация
+- POST /posts/ - невалидные данные (422)
+
+#### ✅ Categories Service
+
+**Unit Tests:**
+- Создание категории
+- Создание дубликата категории
+- Получение категории по ID
+- Получение всех категорий
+- Пагинация
+
+**Integration Tests:**
+- POST /categories/ - успешное создание
+- POST /categories/ - дубликат (400)
+- GET /categories/{id} - существующая категория
+- GET /categories/{id} - несуществующая (404)
+- GET /categories/ - пустой список
+- GET /categories/ - список с данными
+- GET /categories/?skip=N&limit=M - пагинация
+- POST /categories/ - невалидные данные (422)
+
+#### ✅ API Gateway
+
+**Integration Tests:**
+- Проксирование GET к Posts Service
+- Проксирование GET к Categories Service
+- Проксирование POST запросов
+- Обработка неизвестных путей (404)
+
+### Преимущества подхода
+
+- ✅ **Изоляция**: Каждый тест независим (in-memory DB, моки)
+- ✅ **Скорость**: Тесты выполняются быстро (нет реальных RPC вызовов)
+- ✅ **Детерминированность**: Моки обеспечивают предсказуемое поведение
+- ✅ **Покрытие**: Unit + Integration = полное покрытие функционала
+- ✅ **CI/CD**: Автоматический запуск в GitHub Actions
+
+---
+
+## 📊 Мониторинг и логирование
+
+### Structured Logging
+
+Все сервисы используют **Loguru** для JSON-форматированного логирования:
+
+```python
+# Конфигурация
+logger.add(
+    sys.stdout,
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+    serialize=True,  # JSON формат
+    level="INFO"
+)
+```
+
+**Пример лога:**
+
+```json
+{
+  "time": "2024-01-26T10:30:15.123+00:00",
+  "level": "INFO",
+  "message": {
+    "event": "create_post_success",
+    "post_id": 1,
+    "title": "My Post",
+    "category_id": 1,
+    "service": "posts_service"
+  }
+}
+```
+
+### События логирования
+
+| Event | Сервис | Описание |
+|-------|--------|----------|
+| `service_startup` | Все | Запуск сервиса |
+| `service_ready` | Все | Сервис готов к работе |
+| `request_started` | Все | Входящий запрос |
+| `request_completed` | Все | Запрос обработан |
+| `create_post_success` | Posts | Пост создан |
+| `rpc_request_received` | Categories | Получен RPC запрос |
+| `rpc_response_sent` | Categories | Отправлен RPC ответ |
+| `gateway_forwarding` | Gateway | Проксирование запроса |
+| `proxy_response_received` | Gateway | Получен ответ от сервиса |
+
+### Request Duration Tracking
+
+Каждый запрос логируется с временем выполнения:
+
+```python
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = (time.time() - start_time) * 1000
+    
+    logger.info({
+        "event": "request_completed",
+        "method": request.method,
+        "path": str(request.url.path),
+        "status_code": response.status_code,
+        "duration_ms": round(duration_ms, 2)
+    })
+```
+
+### Health Checks
+
+Каждый сервис предоставляет health check endpoint:
+
+```bash
+# API Gateway
+curl http://localhost:8000/health
+# {"status": "healthy", "service": "api_gateway"}
+
+# Posts Service (через Gateway)
+curl http://localhost:8000/posts/ 
+# Проверка доступности
+
+# RabbitMQ Management
+curl http://localhost:15672/api/health/checks/alarms
+```
+
+---
+
+## 🔒 Безопасность
+
+### Rate Limiting
+
+API Gateway ограничивает количество запросов через **Redis**:
+
+```python
+@app.api_route("/{path:path}", 
+               dependencies=[Depends(RateLimiter(times=100, minutes=5))])
+```
+
+**Параметры:**
+- 100 запросов на IP адрес
+- В течение 5 минут
+- При превышении: `429 Too Many Requests`
+
+**Заголовок ответа:**
+```
+X-RateLimit-Limit: 100
+```
+
+### Input Validation
+
+Pydantic схемы валидируют входные данные:
+
+```python
+class PostBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=50)
+    content: str = Field(..., min_length=1)
+    category_id: PositiveInt  # Только положительные числа
+```
+
+**Невалидный запрос возвращает 422:**
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "title"],
+      "msg": "ensure this value has at least 1 characters",
+      "type": "value_error.any_str.min_length"
+    }
+  ]
+}
+```
+
+### SQL Injection Protection
+
+SQLAlchemy ORM защищает от SQL injection:
+
+```python
+# ✅ Безопасно: параметризованные запросы
+result = await self.db.scalar(
+    select(Post).where(Post.id == post_id)
+)
+```
+
+### Environment Variables
+
+Конфиденциальные данные в переменных окружения:
+
+```env
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
+DATABASE_URL=sqlite+aiosqlite:///./data/posts.db
+```
+
+**Не коммитятся в Git** (через `.gitignore`).
+
+---
+
 ## 💡 Примеры использования
 
 ### Полный workflow создания поста
@@ -450,6 +789,95 @@ curl -X POST http://localhost:8000/posts/ \
 # Response: 400 {"detail": "Invalid category_id: Category not found"}
 ```
 
+### Примеры с curl
+
+**Создание нескольких категорий:**
+
+```bash
+curl -X POST http://localhost:8000/categories/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Technology"}'
+
+curl -X POST http://localhost:8000/categories/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Sports"}'
+
+curl -X POST http://localhost:8000/categories/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Travel"}'
+```
+
+**Получение списка с пагинацией:**
+
+```bash
+# Первая страница (2 записи)
+curl "http://localhost:8000/categories/?skip=0&limit=2"
+
+# Вторая страница
+curl "http://localhost:8000/categories/?skip=2&limit=2"
+```
+
+**Фильтрация постов по категории:**
+
+```bash
+# Все посты в категории "Technology" (id=1)
+curl "http://localhost:8000/posts/?category_id=1"
+
+# С пагинацией
+curl "http://localhost:8000/posts/?category_id=1&skip=0&limit=10"
+```
+
+---
+
+## 🔄 CI/CD
+
+### GitHub Actions Pipeline
+
+Проект использует **автоматическое тестирование** при каждом push/PR:
+
+```yaml
+# .github/workflows/main.yml
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-categories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        working-directory: ./categories_service
+        run: |
+          pip install -r requirements-dev.txt
+      - name: Run tests
+        working-directory: ./categories_service
+        run: pytest -v --tb=short
+
+  test-posts:
+    # Аналогично для Posts Service
+
+  test-api-gateway:
+    # Аналогично для API Gateway
+```
+
+**Что проверяется:**
+- ✅ Все unit тесты
+- ✅ Все integration тесты
+- ✅ Линтинг кода (в будущем)
+- ✅ Покрытие тестами (в будущем)
+
+**Статус тестов:**
+
+[![Tests](https://img.shields.io/badge/Tests-Passing-success.svg)](https://github.com/9meows/fastapi-microservices/actions)
+
 ---
 
 ## 📝 Лицензия
@@ -468,3 +896,5 @@ MIT License
 ---
 
 <3
+
+
